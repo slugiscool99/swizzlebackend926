@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const passport = require('passport');
-//TODO: Add Swizzle NPM package!
 
-router.get('/', async (request, response) => {
+const { optionalAuthentication, requiredAuthentication } = require('swizzle-js');
+
+router.get('/hi', optionalAuthentication, async (request, response) => {
     //Your code goes here
+    //for loop
+    
     return response.json({ message: "It works!" });
 });
 

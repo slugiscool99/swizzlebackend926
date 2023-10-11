@@ -1,65 +1,71 @@
 //BEGIN SWIZZLE DEPENDENCIES
 require('dotenv').config();
+const { secrets } = require('swizzle-js');
 
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3001;
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'user-hosting')));
 
-const secrets = require('./swizzle-dependencies/swizzle-secrets');
-secrets.initialize();
+const { 
+  analyticsMiddleware,
+  authRoutes,
+  dbRoutes,
+  internalRoutes,
+  appleRoutes,
+  storageRoutes,
+  setupNotifications,
+  setupPassport,
+  connectDB
+} = require('swizzle-js');
 
 const passport = require('passport');
-const {setupPassport} = require('./swizzle-dependencies/swizzle-passport');
-const { connectDB, getDb, UID } = require('./swizzle-dependencies/swizzle-db-connection');
-const authRoutes = require('./swizzle-dependencies/swizzle-auth');
-const dbDriverRoutes = require('./swizzle-dependencies/swizzle-db-driver');
-const { storageRoutes } = require('./swizzle-dependencies/swizzle-storage');
-const internalRoutes = require('./swizzle-dependencies/swizzle-internal');
-const requestSaver = require('./swizzle-dependencies/swizzle-monitoring');
-const { setupNotifications } = require('./swizzle-dependencies/swizzle-notifications');
 const cors = require('cors');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(requestSaver);
+app.use(analyticsMiddleware);
 app.use(cors());
 
 app.use(passport.initialize());
 app.use('/swizzle/auth', authRoutes);
-app.use('/swizzle/db', dbDriverRoutes);
+app.use('/swizzle/db', dbRoutes);
 app.use('/swizzle/internal', internalRoutes);
 app.use('/swizzle/storage', storageRoutes);
+app.use('/swizzle/apple', appleRoutes);
 //END SWIZZLE DEPENDENCIES
+
 
 //BEGIN USER DEPENDENCIES
 
 //_SWIZZLE_NEWREQUIREENTRYPOINT
+const get_ = require("./user-dependencies/get-.js");
 
 //END USER DEPENDENCIES
+
 
 //BEGIN USER ROUTES
 
 //_SWIZZLE_NEWENDPOINTENTRYPOINT
+app.use('', get_);
 
 //END USER ROUTES
 
 //Swizzle routes
+app.use(express.static(path.join(__dirname, 'user-hosting/build')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'user-hosting/build', 'index.html'));
+});
+
 (async function startServer() {
   try {
-    //Required: Passport auth
+    await connectDB()
+
     setupPassport();
 
-    //Required: DB
-    await connectDB();   
-
-    // Optional: Notifications
     try {
       setupNotifications()
-    } catch(err) {
-      console.warn(`Failed to setup notifications. Continuing without them.`);
-    }
+    } catch(err) { }
 
     app.listen(port, () => {
       console.log(`Server running!`);
